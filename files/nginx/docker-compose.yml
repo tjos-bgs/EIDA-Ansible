@@ -1,0 +1,9 @@
+version: "3.8"
+
+services:
+
+  nginx:
+    build:
+      context: .
+    restart: unless-stopped
+    network_mode: host
