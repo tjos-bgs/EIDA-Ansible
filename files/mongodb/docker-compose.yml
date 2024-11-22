@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7.0
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: "<redacted>"
+      MONGO_INITDB_ROOT_PASSWORD: "<redacted>"
+      MONGO_INITDB_DATABASE: "admin"
+    network_mode: host
+    ports:
+      - 27017:27017
+    volumes:
+      - <redacted>/databases/mongo/data:/data/db
+      - <redacted>/databases/mongo/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js
+      - <redacted>/wsavailability:/mnt/wsavailability
+    command: "mongod --auth"
