@@ -1,0 +1,23 @@
+version: "3.8"
+
+services:
+
+  collector:
+    build:
+      context: wfcatalog-github/collector
+    volumes:
+      - <redacted>/wfcatalog/collector_config.json:/usr/src/collector/config.json
+      - <redacted>/wfcatalog/collector_logs:/usr/src/collector/logs
+      - <redacted_mounted_folder_path>:/data
+    network_mode: host
+
+  service:
+    build:
+      context: wfcatalog-github/service
+    volumes:
+      - <redacted>/wfcatalog/service_configuration.json:/app/configuration.json
+      - <redacted>/wfcatalog/service_logs:/app/logs
+    restart: unless-stopped
+    network_mode: host
+    ports:
+      - 3000:3000
