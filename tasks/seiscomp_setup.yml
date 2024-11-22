@@ -1,0 +1,67 @@
+# Tasks configure Seiscomp
+# It assumes that username is eida and seiscomp is installed at
+# <redacted>/seiscomp6
+---
+- name: Curl SeisComp 6 into <redacted>/seiscomp6
+  ansible.builtin.unarchive:
+    src: "{{ seiscomp_package_link }}"
+    dest: "{{ seiscomp_dir }}"
+    remote_src: yes
+    creates: "{{ seiscomp_dir }}/seiscomp/bin/seiscomp"
+    owner: eida
+    group: sg
+
+- name: add seiscomp6 to user PATH
+  lineinfile:
+    path: <redacted>/.bashrc
+    line: "export PATH={{ seiscomp_dir }}/seiscomp/bin:$PATH"
+
+- name: add seiscomp6 to user PYTHONPATH
+  lineinfile:
+    path: <redacted>/.bashrc
+    line: "export PYTHONPATH={{ seiscomp_dir }}/seiscomp/lib/python:$PATH"
+
+- name: copy fdsnws.cfg
+  copy:
+    src: "files/fdsnws/{{ item }}"
+    dest: "{{ seiscomp_dir }}/seiscomp/etc/{{ item }}"
+  with_items:
+    - fdsnws.cfg
+
+- name: copy filter.ini
+  copy:
+    src: "files/fdsnws/{{ item }}"
+    dest: "{{ seiscomp_dir }}/seiscomp/etc/{{ item }}"
+  with_items:
+    - fdsnws_filter.ini
+
+- name: copy seiscomp.service
+  copy:
+    src: "files/fdsnws/{{ item }}"
+    dest: "/usr/lib/systemd/system/{{ item }}"
+  with_items:
+    - seiscomp.service
+
+- name: copy import_station_xml script
+  copy:
+    src: files/create_station_xml.py
+    dest: <redacted>
+
+- name: set $LD_LIBRARY_PATH for cron job
+  ansible.builtin.cron:
+    name: LD_LIBRARY_PATH
+    env: true
+    job: "{{ seiscomp_dir }}/seiscomp/lib"
+
+- name: set $PATH for cron job
+  ansible.builtin.cron:
+    name: PATH
+    env: true
+    job: "{{ seiscomp_dir }}/seiscomp/bin:/sbin:/bin:/usr/sbin:/usr/bin"
+
+- name: set cron job to update station xml every 5 minutes
+  ansible.builtin.cron:
+    name: seiscomp inventory refresh
+    minute: "*/5"
+    job: >-
+      /bin/date >> "{{ seiscomp_dir }}/seiscomp/etc/station_xml_updates.log" && /usr/bin/python <redacted>/create_station_xml.py >> "{{ seiscomp_dir }}/seiscomp/etc/station_xml_updates.log" 2>&1 || exit 1  && "{{ seiscomp_dir }}/seiscomp/bin/seiscomp" restart >> "{{ seiscomp_dir }}/seiscomp/etc/station_xml_updates.log"
