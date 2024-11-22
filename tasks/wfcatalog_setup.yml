@@ -1,0 +1,68 @@
+# Tasks to configure wfcatalog
+# It assumes that username is eida and seiscomp is installed at
+# <redacted>/seiscomp6
+---
+- name: Checkout wfcatalog repository
+  git:
+    repo: '{{ wfcatalog_git_repo }}'
+    dest: "{{ wfcatalog_dir }}/wfcatalog-github"
+    version: master
+    force: true
+
+- name: Checkout wf-gui repository
+  git:
+    repo: '{{ wf_gui_git_repo }}'
+    dest: "{{ wfcatalog_dir }}/wf-gui-github"
+    version: variable-urls
+    force: true
+
+- name: Copy collector config
+  copy:
+    src: wfcatalog/collector_config.json
+    dest: "{{ wfcatalog_dir }}/collector_config.json"
+
+- name: Copy service config
+  copy:
+    src: wfcatalog/service_configuration.json
+    dest: "{{ wfcatalog_dir }}/service_configuration.json"
+
+- name: Copy Docker compose file
+  copy:
+    src: wfcatalog/docker-compose.yml
+    dest: "{{ wfcatalog_dir }}/docker-compose.yml"
+
+- name: Start WFCatalog service
+  community.docker.docker_compose_v2:
+    project_src: "{{ wfcatalog_dir }}"
+    build: always
+    pull: always
+    state: present
+    recreate: auto
+
+- name: Add cron job for collector daily runs at 6.30am
+  ansible.builtin.cron:
+    name: wfcatalog collector daily run
+    # Seismic data are processed 4 hours in arrears, so this must run after
+    # 04:00
+    hour: "6"
+    minute: "30"
+    job: >-
+      cd "{{ wfcatalog_dir }}/" &&
+      /usr/bin/docker compose run collector /bin/bash -c
+      'cd /usr/src/collector && python WFCatalogCollector.py --logfile logs/WFCatalogCollector-day.log
+      --flags --csegs
+      --past yesterday' > "{{ wfcatalog_dir }}/cron-daily.out" 2>&1
+
+- name: Add cron job for collector weekly runs (Sunday morning)
+  ansible.builtin.cron:
+    name: wfcatalog collector weekly run
+    hour: "4"
+    minute: "15"
+    weekday: "0"
+    # Job uses update flag to fix any files that have changed
+    job: >-
+      cd "{{ wfcatalog_dir }}/" &&
+      /usr/bin/docker compose run collector /bin/bash -c
+      'cd /usr/src/collector && python WFCatalogCollector.py --logfile logs/WFCatalogCollector-week.log
+      --flags --csegs --update
+      --past fortnight' > "{{ wfcatalog_dir }}/cron-weekly.out" 2>&1
