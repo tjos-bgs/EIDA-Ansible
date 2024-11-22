@@ -1,0 +1,15 @@
+---
+gpfs_dir: <redacted>
+database_dir: <redacted>/databases
+nginx_dir: <redacted>/nginx
+wfcatalog_dir: <redacted>/wfcatalog
+wsavailability_dir: <redacted>/wsavailability
+seiscomp_dir: <redacted>/seiscomp6
+request_logs_dir: <redacted>/.seiscomp/request_logs
+wfcatalog_git_repo: http://github.com/EIDA/wfcatalog.git
+wf_gui_git_repo: https://github.com/BritishGeologicalSurvey/eida-docker-wf-guis.git
+seiscomp_package_link: https://www.seiscomp.de/downloader/seiscomp-6.3.1-rhel9-x86_64.tar.gz
+wsavailability_repo: https://github.com/EIDA/ws-availability.git
+mysql_root_password: <redacted>
+mysql_database_name: seiscomp
+redis_password: <redacted>
