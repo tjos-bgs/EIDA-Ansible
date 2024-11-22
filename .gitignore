@@ -1,0 +1,11 @@
+*__pycache__
+*.retry
+.idea
+roles/*
+/seiscomp3
+/seiscomp3-binaries
+/seisan
+/routing
+/eida-docker-wf-guis
+/webdc3
+/.vscode
