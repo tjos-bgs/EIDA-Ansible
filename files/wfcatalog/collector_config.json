@@ -1,0 +1,25 @@
+{
+  "VERSION": "0.5.0",
+  "VERSION_DATE": "2021-07-07",
+  "ARCHIVE": "BGS",
+  "PUBLISHER": "OBSPY MSEED-QC",
+  "STRUCTURE": "SDS",
+  "MONGO": {
+    "ENABLED": true,
+    "DB_HOST": "localhost",
+    "DB_PORT": 27017,
+    "DB_NAME": "wfrepo",
+    "DB_USER": "wfcatalogwrite",
+    "DB_PASS": "<redacted>",
+    "AUTHENTICATE": true,
+    "ALLOW_DOUBLE": false
+  },
+  "ARCHIVE_ROOT": "/data",
+  "DEFAULT_LOG_FILE": "/WFCatalog-collector.log",
+  "PROCESSING_TIMEOUT": 120,
+  "ENABLE_DUBLIN_CORE": false,
+  "FILTERS": {
+    "WHITE": ["GB.*"],
+    "BLACK": []
+  }
+}
