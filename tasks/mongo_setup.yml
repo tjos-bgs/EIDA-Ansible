@@ -1,0 +1,14 @@
+---
+- name: Copy Mongo files
+  copy:
+    src: mongodb/
+    dest: "{{ database_dir }}/mongo"
+
+- name: Start MongoDB service
+  community.docker.docker_compose_v2:
+    project_src: "{{ database_dir }}/mongo"
+    build: always
+    pull: always
+    state: present
+    recreate: auto
+  register: result
