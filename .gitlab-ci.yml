@@ -1,0 +1,22 @@
+stages:
+  - deploy
+
+variables:
+  ANSIBLE_HOST_KEY_CHECKING: "false"
+
+deploy_playbook:
+  stage: deploy
+  image: <redacted>
+  tags:
+    - <redacted>
+  script:
+    # Add the SSH key stored in SSH_PRIVATE_KEY variable to the agent store
+    # https://gitlab.com/gitlab-examples/ssh-private-key/issues/1#note_48526556
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add - > /dev/null
+    - export ANSIBLE_HOST_KEY_CHECKING=False  # as pipeline doesn't know hosts
+    - export ANSIBLE_INVENTORY_UNPARSED_FAILED=1  # so bad host.yml fails deploy
+    - ansible-galaxy install -r requirements.yml
+    - ansible-playbook -i hosts.yml main.yml -u eida
+  only:
+    - main
