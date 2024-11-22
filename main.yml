@@ -1,0 +1,57 @@
+---
+- name: Playbook
+  hosts: "{{ target | default('all') }}"
+  become: true
+
+  roles:
+    - role: britishgeologicalsurvey.linux.common
+      vars:
+        <redacted>
+  vars_files:
+    - vars/vars.yml
+
+# Configure server for EIDA
+  tasks:
+    - name: Setup EIDA Server
+      ansible.builtin.import_tasks: tasks/eida_server_setup.yml
+      tags:
+        - eida_server
+      notify:
+        - restart_mariadb
+      
+    - name: Setup Mongo DB (Docker)
+      become_user: eida
+      ansible.builtin.import_tasks: tasks/mongo_setup.yml
+      tags:
+        - mongo
+    
+    - name: Setup NGINX (Docker)
+      become_user: eida
+      ansible.builtin.import_tasks: tasks/nginx_setup.yml
+      tags:
+        - nginx
+    
+    - name: Setup WFCatalog (Docker)
+      become_user: eida
+      ansible.builtin.import_tasks: tasks/wfcatalog_setup.yml
+      tags:
+        - wfcatalog
+    
+    - name: Setup WSAvailability (Docker)
+      become_user: eida
+      ansible.builtin.import_tasks: tasks/wsavailability_setup.yml
+      tags:
+        - wsavail
+    
+    - name: Setup Seiscomp 6
+      become_user: eida
+      ansible.builtin.import_tasks: tasks/seiscomp_setup.yml
+      tags:
+        - seiscomp
+    
+  handlers:
+    - name: restart_mariadb
+      service:
+        name: mariadb
+        state: restarted
+        enabled: yes
