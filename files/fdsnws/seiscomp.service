@@ -1,0 +1,15 @@
+[Unit]
+Description=SeisComP6 service (FDSNWS api)
+After=network.target
+
+[Service]
+Type=forking
+User=eida
+ExecStart=<redacted>/seiscomp6/seiscomp/bin/seiscomp start
+ExecStop=<redacted>/seiscomp6/seiscomp/bin/seiscomp stop
+KillMode=none
+ExecReload=<redacted>/seiscomp6/seiscomp/bin/seiscomp update-config
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
