@@ -1,0 +1,99 @@
+# Tasks to configure wfcatalog
+# It assumes that username is eida and seiscomp is installed at
+# <redacted>/seiscomp6
+---
+- name: Checkout WS Availability repository
+  ansible.builtin.git:
+    repo: '{{ wsavailability_repo }}'
+    dest: "{{ wsavailability_dir }}"
+    version: master
+    force: true
+
+- name: Remove config.py.sample
+  ansible.builtin.file:
+    path: "{{ wsavailability_dir }}/config.py.sample"
+    state: absent
+
+- name: Remove old cache.py
+  ansible.builtin.file:
+    path: "{{ wsavailability_dir }}/cache.py"
+    state: absent
+
+- name: Remove old redis_client.py
+  ansible.builtin.file:
+    path: "{{ wsavailability_dir }}/apps/redis_client.py"
+    state: absent
+
+- name: Remove old wfcatalog_client.py
+  ansible.builtin.file:
+    path: "{{ wsavailability_dir }}/apps/wfcatalog_client.py"
+    state: absent
+
+- name: Remove old restriction.py
+  ansible.builtin.file:
+    path: "{{ wsavailability_dir }}/apps/restriction.py"
+    state: absent
+
+- name: Copy config.py to replace config.py.sample 
+  copy:
+    src: wsavailability/config.py
+    dest: "{{ wsavailability_dir }}/config.py"
+
+- name: Copy new cache.py 
+  copy:
+    src: wsavailability/cache.py
+    dest: "{{ wsavailability_dir }}/cache.py"
+
+- name: Copy new redis_client.py 
+  copy:
+    src: wsavailability/redis_client.py
+    dest: "{{ wsavailability_dir }}/apps/redis_client.py"
+
+- name: Copy new wfcatalog_client.py
+  copy:
+    src: wsavailability/wfcatalog_client.py
+    dest: "{{ wsavailability_dir }}/apps/wfcatalog_client.py"
+
+- name: Copy new restriction.py
+  copy:
+    src: wsavailability/restriction.py
+    dest: "{{ wsavailability_dir }}/apps/restriction.py"
+
+- name: Render docker-compose.yml from template
+  template:
+    src: wsavailability/docker-compose.yml.j2
+    dest: "{{ wsavailability_dir }}/docker-compose.yml"
+    mode: '0644'
+
+- name: Start WS Availability service
+  community.docker.docker_compose_v2:
+    project_src: "{{ wsavailability_dir }}"
+    build: always
+    pull: always
+    state: present
+    recreate: auto
+
+# Uncomment if running FDSNWS-Availability for the first time. Pipeline fails if run while Mongo is busy.
+# - name: Initial build command for materialised view
+#   community.docker.docker_container_exec:
+#     container: mongo-mongodb-1
+#     command: /bin/bash -c "mongosh mongodb://<redacted>/wfrepo?authSource=admin --eval "daysBack=365" /mnt/wsavailability/views/main.js"
+#   register: result
+
+# - name: Print initial materialised build stdout
+#   ansible.builtin.debug:
+#     var: result.stdout
+
+- name: Rebuild FDSNWS-Availability restriction information cache daily at 3:00 AM
+  ansible.builtin.cron:
+    name: rebuild fdsnws availability cache
+    hour: "3"
+    minute: "0"
+    job: /usr/bin/docker restart fdsnws-availability-cacher
+
+- name: Daily appension of FDSNWS-Availability information to materialised view at 9:00 AM
+  ansible.builtin.cron:
+    name: daily fdsnws availability appension
+    hour: "9"
+    minute: "0"
+    job: /usr/bin/docker exec mongo-mongodb-1 /bin/bash -c "mongosh mongodb://<redacted>/wfrepo?authSource=admin /mnt/wsavailability/views/main.js" > "{{ wsavailability_dir }}/cron-avail.out" 2>&1
