@@ -14,7 +14,7 @@ These include Sophos, Prometheus and DevOps related collections.
 ansible-galaxy install -r requirements.yml
 ```
 
-The seisan folder is mounted onto the VM. 
+The seisan folder on the GPFS, is mounted onto the VM. 
 
 ### Server configuration
 
