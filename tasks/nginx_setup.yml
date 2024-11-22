@@ -1,0 +1,16 @@
+# Tasks to configure NGINX reverse proxy
+# It assumes that username is eida and seiscomp is installed at
+# <redacted>/seiscomp6
+---
+- name: Copy NGINX files
+  copy:
+    src: nginx/
+    dest: "{{ nginx_dir }}"
+
+- name: Start nginx service
+  community.docker.docker_compose_v2:
+    project_src: "{{ nginx_dir }}"
+    build: always
+    pull: always
+    state: present
+    recreate: auto
