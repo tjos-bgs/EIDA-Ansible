@@ -1,0 +1,171 @@
+---
+- name: Install required software for EIDA server
+  ansible.builtin.dnf:
+    name:
+      - nfs-utils
+      - tar
+      - python
+      - nodejs
+
+- name: Install 'base' software for Seiscomp
+  # List comes from https://github.com/SeisComP/seiscomp/blob/master/src/system/apps/seiscomp/share/deps/rhel/9/install-base.sh
+  ansible.builtin.dnf:
+    name: "{{ packages }}"
+  vars:
+    packages:
+      - libxml2 
+      - boost-filesystem 
+      - boost-iostreams 
+      - boost-thread 
+      - boost-program-options 
+      - boost-regex 
+      - boost-system 
+      - ncurses 
+      - mariadb
+      - mariadb-server
+      - python3-numpy
+      
+- name: Install 'fdsnws' software
+  # List comes from https://github.com/SeisComP/seiscomp/blob/master/src/system/apps/seiscomp/share/deps/rhel/9/install-fdsnws.sh
+  ansible.builtin.dnf:
+    name: "{{ packages }}"
+  vars:
+    packages:
+      - epel-release
+      - python3-twisted 
+      - python3-dateutil
+      - python3-mysqlclient
+      - python3-devel
+
+# - name: Download GeoIP-data RPM
+#   ansible.builtin.get_url:
+#     url: "http://www6.atomicorp.com/channels/atomic/centos/9/x86_64/RPMS/GeoIP-GeoLite-data-1.6.12-5.el9.noarch.rpm"
+#     dest: "/tmp/GeoIP-data-package.rpm"
+
+# - name: Download GeoIP RPM
+#   ansible.builtin.get_url:
+#     url: "http://www6.atomicorp.com/channels/atomic/centos/9/x86_64/RPMS/GeoIP-1.6.12-7.el9.x86_64.rpm"
+#     dest: "/tmp/GeoIP-package.rpm"
+
+# - name: Download GeoIP-devel RPM
+#   ansible.builtin.get_url:
+#     url: "http://www6.atomicorp.com/channels/atomic/centos/9/x86_64/RPMS/GeoIP-devel-1.6.12-7.el9.x86_64.rpm"
+#     dest: "/tmp/GeoIP-devel-package.rpm"
+
+# - name: Install GeoIP RPM
+#   ansible.builtin.dnf:
+#     name: 
+#       - "/tmp/GeoIP-data-package.rpm"
+#       - "/tmp/GeoIP-package.rpm"
+#       - "/tmp/GeoIP-devel-package.rpm"
+#     state: present
+
+# - name: Clean up downloaded RPMs
+#   ansible.builtin.file:
+#     path: "/tmp/GeoIP*.rpm"
+#     state: absent
+
+- name: Update Python OpenSSL library
+  # The OpenSSL library supplied by the RedHat repos is too old
+  # Without this update, the FDSNWS will not launch.
+  ansible.builtin.pip:
+    name:
+      - pyopenssl>=24.1.0
+      - eida-statistics-aggregator
+
+# Create user with access to seismic archive
+- name: add sg group (used for gpfs mount)
+  group:
+    name: sg
+    gid: 11000
+
+- name: add eida user
+  user:
+    name: eida
+    comment: EIDA user
+    uid: 11229
+    group: sg
+    groups: docker
+    append: true
+
+- name: Add SSH public key to user remote
+  ansible.posix.authorized_key:
+    user: eida
+    key: "{{ lookup('file', item) }}"
+  with_fileglob: files/public_keys/*.pub
+  tags:
+    - ssh_keys
+
+- name: Add eida user to sudoers
+  lineinfile:
+    "dest=/etc/sudoers
+    regexp='^eida ALL'
+    line='eida ALL=(ALL) NOPASSWD: ALL'
+    state=present"
+
+- name: create directory for gpfs mount
+  file:
+    name: "{{ gpfs_dir }}"
+    state: directory
+    owner: eida
+    group: sg
+
+- name: mount gpfs directory
+  mount:
+    path: "{{ gpfs_dir }}"
+    src: <redacted>
+    fstype: nfs
+    opts: ro,exec,soft,bg,nfsvers=4
+    state: present
+
+- name: create directory for Databases
+  file:
+    name: "{{ database_dir }}"
+    state: directory
+    owner: eida
+    group: sg
+
+# Optimisations for MySQL
+# (https://docs.gempa.de/seiscomp/current/base/installation.html)
+- name: Add optimisations to MariaDB config
+  ansible.builtin.blockinfile:
+    path: /etc/my.cnf.d/mariadb-server.cnf
+    block: |
+      # Optional setting
+      innodb_buffer_pool_size = 536870912
+      innodb_flush_log_at_trx_commit = 2
+
+- name: Create directory for Mongo DB
+  file:
+    path: "{{ database_dir }}/mongo/data"
+    state: directory
+    owner: eida
+    group: sg
+
+- name: Create directory for NGINX files
+  file:
+    path: "{{ nginx_dir }}"
+    state: directory
+    owner: eida
+    group: sg
+
+- name: Create directory for WF catalog files
+  file:
+    path: "{{ wfcatalog_dir }}"
+    state: directory
+    owner: eida
+    group: sg
+
+- name: Create directory for WS Availability files
+  file:
+    path: "{{ wsavailability_dir }}"
+    state: directory
+    owner: eida
+    group: sg
+
+- name: Create Seiscomp 6 directory
+  ansible.builtin.file:
+    path: "{{ seiscomp_dir }}"
+    state: directory
+    owner: eida
+    group: sg
